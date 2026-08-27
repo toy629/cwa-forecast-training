@@ -349,51 +349,6 @@
   .reset-btn:hover{color:var(--text); border-color:var(--teal);}
   .reset-btn:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
 
-  .code-panel{
-    width:min(680px, 100%);
-    margin-top:22px;
-  }
-  .link-btn{
-    background:none;
-    border:none;
-    color:var(--teal);
-    font-family:'VT323', monospace;
-    font-size:19px;
-    cursor:pointer;
-    padding:6px 2px;
-  }
-  .link-btn:hover{color:var(--text);}
-  .link-btn:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
-
-  .code-body{
-    margin-top:10px;
-    background:var(--panel);
-    border:2px solid var(--frame);
-    border-radius:10px;
-    padding:16px 18px;
-  }
-  .code-body p{
-    font-size:18px;
-    line-height:1.5;
-    color:var(--text-muted);
-    margin:0 0 12px;
-  }
-  .code-body p:last-child{margin-bottom:0; margin-top:12px;}
-  pre{
-    margin:0;
-    overflow-x:auto;
-    font-family:ui-monospace, 'Cascadia Code', Consolas, monospace;
-    font-size:14px;
-    line-height:1.6;
-    color:var(--text);
-    background:#120f1c;
-    border-radius:8px;
-    padding:14px 16px;
-  }
-  .tok-kw{color:#c792ea;}
-  .tok-fn{color:var(--teal);}
-  .tok-str{color:#ecc48d;}
-  .tok-com{color:#6b6486; font-style:italic;}
 </style>
 
 <h1>特報訓練關卡</h1>
@@ -459,30 +414,6 @@
     <button id="btnCloseLightbox" class="pxbtn accent">✕ 關閉 <kbd class="opt-key">Esc</kbd></button>
   </div>
 </div>
-
-<section class="code-panel">
-  <button id="toggleCode" class="link-btn">▾ 顯示程式碼架構</button>
-  <div class="code-body" id="codeBody" hidden>
-    <p>架構還是同一套：player、map、quest 三個物件各自擁有 update / draw，主迴圈只負責在對的時機呼叫它們。差別只在於，原本「戰鬥」的那個物件，現在存放的是一題題的 SOP 問答，答對才能往下一題走：</p>
-    <pre><code><span class="tok-com">// 每個訓練關卡就是一個物件，裡面放著題目資料</span>
-<span class="tok-kw">const</span> quest = {
-  name: <span class="tok-str">'發布巨浪告警'</span>,
-  questions: [
-    { prompt: <span class="tok-str">'...'</span>, options: [ <span class="tok-com">/* 3 個選項 */</span> ] },
-    <span class="tok-com">// ...更多題目</span>
-  ],
-  <span class="tok-fn">update</span>(dt) { <span class="tok-com">/* 計時、答錯重來、答對進下一題 */</span> },
-  <span class="tok-fn">draw</span>(ctx)  { <span class="tok-com">/* 畫出教官、完成度進度條 */</span> }
-};
-
-<span class="tok-kw">function</span> <span class="tok-fn">answerQuestion</span>(i) {
-  <span class="tok-kw">const</span> opt = currentQuestion.options[i];
-  <span class="tok-kw">if</span> (opt.correct) advanceToNextQuestion();
-  <span class="tok-kw">else</span> { showWhyItsWrong(opt.feedback); retrySameQuestion(); }
-}</code></pre>
-    <p>換句話說：把「戰鬥的勝負」換成「SOP 步驟答對答錯」，遊戲骨架完全不用重寫，這就是物件導向＋function 拆分的好處——內容可以整個換掉，架構不用動。</p>
-  </div>
-</section>
 
 <script>
 (function(){
@@ -795,8 +726,6 @@
     btnContinue: document.getElementById('btnContinue'),
     btnContinueLabel: document.getElementById('btnContinueLabel'),
     btnReset: document.getElementById('btnReset'),
-    toggleCode: document.getElementById('toggleCode'),
-    codeBody: document.getElementById('codeBody'),
     welcomeOverlay: document.getElementById('welcomeOverlay'),
     welcomeTitle: document.getElementById('welcomeTitle'),
     welcomeDesc: document.getElementById('welcomeDesc'),
@@ -1594,12 +1523,6 @@
     else continueQuest();
   });
   el.btnReset.addEventListener('click', resetGame);
-
-  el.toggleCode.addEventListener('click', function(){
-    var hidden = el.codeBody.hidden;
-    el.codeBody.hidden = !hidden;
-    el.toggleCode.textContent = (hidden ? '▴ 隱藏程式碼架構' : '▾ 顯示程式碼架構');
-  });
 
   updateQuestPanels();
   requestAnimationFrame(loop);
