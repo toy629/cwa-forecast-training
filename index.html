@@ -263,6 +263,69 @@
     justify-content:center;
   }
 
+  .cert-overlay{
+    position:absolute; inset:0;
+    background:rgba(10,8,18,0.85);
+    display:flex; align-items:center; justify-content:center;
+    padding:16px;
+    z-index:6;
+    overflow-y:auto;
+  }
+  .cert-panel{
+    position:relative;
+    background:var(--panel);
+    border:2px solid var(--gold-dim);
+    border-radius:10px;
+    padding:22px 22px 20px;
+    max-width:460px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 12px 30px -10px rgba(0,0,0,0.6);
+  }
+  .cert-close{
+    position:absolute; top:6px; right:8px;
+    background:none; border:none; color:var(--text-muted);
+    font-size:16px; cursor:pointer; padding:4px 8px; line-height:1;
+  }
+  .cert-close:hover{color:var(--text);}
+  .cert-close:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
+  .cert-panel h2{
+    font-family:'Press Start 2P', monospace;
+    font-size:13px;
+    color:var(--gold);
+    margin:6px 0 14px;
+    line-height:1.7;
+    text-wrap:balance;
+  }
+  .cert-desc{
+    font-size:17px;
+    line-height:1.5;
+    color:var(--text);
+    margin:0 0 14px;
+  }
+  .cert-form{
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+    margin-bottom:14px;
+  }
+  .cert-input{
+    flex:1; min-width:160px;
+    font-family:'VT323', monospace;
+    font-size:19px;
+    color:var(--text);
+    background:var(--panel-raised);
+    border:2px solid var(--frame-light);
+    border-radius:6px;
+    padding:8px 10px;
+  }
+  .cert-input:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
+  .cert-canvas{
+    width:100%; max-width:420px; height:auto;
+    border-radius:6px;
+    border:1px solid var(--frame-light);
+    margin:4px auto 14px;
+    display:block;
+  }
+
   .lightbox-overlay{
     position:fixed; inset:0;
     background:rgba(8,6,14,0.88);
@@ -349,6 +412,21 @@
   .reset-btn:hover{color:var(--text); border-color:var(--teal);}
   .reset-btn:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
 
+  .cert-btn{
+    position:absolute;
+    top:-12px; left:12px;
+    font-family:'VT323', monospace;
+    font-size:14px;
+    color:var(--gold);
+    background:var(--ink);
+    border:2px solid var(--gold-dim);
+    border-radius:6px;
+    padding:4px 10px;
+    cursor:pointer;
+  }
+  .cert-btn:hover{background:#2a2013;}
+  .cert-btn:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
+
 </style>
 
 <h1>特報訓練關卡</h1>
@@ -356,6 +434,7 @@
 
 <div class="console">
   <button id="btnReset" class="reset-btn" title="重新開始整個訓練">重置</button>
+  <button id="btnViewCert" class="cert-btn" title="查看結業證書" hidden>🏆 證書</button>
   <div class="screen-wrap">
     <canvas id="game" width="640" height="480" role="img" aria-label="訓練關卡畫面"></canvas>
     <div class="welcome-overlay" id="welcomeOverlay">
@@ -363,6 +442,19 @@
         <h2 id="welcomeTitle"></h2>
         <p id="welcomeDesc"></p>
         <button id="btnWelcomeStart" class="pxbtn accent" autofocus>開始 <kbd class="opt-key">Enter</kbd></button>
+      </div>
+    </div>
+    <div class="cert-overlay" id="certOverlay" hidden>
+      <div class="cert-panel">
+        <button id="btnCloseCert" class="cert-close" aria-label="關閉">✕</button>
+        <h2>🏆 恭喜完成全部訓練！</h2>
+        <p class="cert-desc">你已完成巨浪告警、強風特報、大雷雨即時訊息的發布，以及巨浪告警解除流程。輸入姓名，產生你的結業證書：</p>
+        <div class="cert-form">
+          <input type="text" id="certNameInput" class="cert-input" placeholder="請輸入姓名" maxlength="24" />
+          <button id="btnGenCert" class="pxbtn accent">產生證書</button>
+        </div>
+        <canvas id="certCanvas" width="1000" height="700" class="cert-canvas" hidden></canvas>
+        <button id="btnDownloadCert" class="pxbtn accent" hidden>⬇ 下載證書圖片</button>
       </div>
     </div>
   </div>
@@ -726,6 +818,13 @@
     btnContinue: document.getElementById('btnContinue'),
     btnContinueLabel: document.getElementById('btnContinueLabel'),
     btnReset: document.getElementById('btnReset'),
+    btnViewCert: document.getElementById('btnViewCert'),
+    certOverlay: document.getElementById('certOverlay'),
+    certNameInput: document.getElementById('certNameInput'),
+    btnGenCert: document.getElementById('btnGenCert'),
+    certCanvas: document.getElementById('certCanvas'),
+    btnDownloadCert: document.getElementById('btnDownloadCert'),
+    btnCloseCert: document.getElementById('btnCloseCert'),
     welcomeOverlay: document.getElementById('welcomeOverlay'),
     welcomeTitle: document.getElementById('welcomeTitle'),
     welcomeDesc: document.getElementById('welcomeDesc'),
@@ -902,6 +1001,135 @@
     } else if (showContinue) {
       el.btnContinueLabel.textContent = '繼續';
     }
+
+    el.btnViewCert.hidden = !allQuestsCompleted();
+  }
+
+  // ---------- completion certificate ----------
+  var CERT_W = 1000, CERT_H = 700;
+
+  function allQuestsCompleted() {
+    return QUEST_WAVE.completed && QUEST_WIND.completed && QUEST_THUNDER.completed && QUEST_CANCEL.completed;
+  }
+
+  function openCertOverlay() {
+    el.certOverlay.hidden = false;
+    el.certNameInput.focus();
+  }
+  function closeCertOverlay() {
+    el.certOverlay.hidden = true;
+  }
+
+  function renderCertificate() {
+    var name = (el.certNameInput.value || '').trim() || '學員';
+    var cctx = el.certCanvas.getContext('2d');
+    cctx.clearRect(0, 0, CERT_W, CERT_H);
+
+    var grad = cctx.createLinearGradient(0, 0, 0, CERT_H);
+    grad.addColorStop(0, '#241f38');
+    grad.addColorStop(1, '#14111f');
+    cctx.fillStyle = grad;
+    cctx.fillRect(0, 0, CERT_W, CERT_H);
+
+    cctx.strokeStyle = '#ffcb47';
+    cctx.lineWidth = 6;
+    cctx.strokeRect(24, 24, CERT_W - 48, CERT_H - 48);
+    cctx.strokeStyle = 'rgba(255,203,71,0.4)';
+    cctx.lineWidth = 2;
+    cctx.strokeRect(40, 40, CERT_W - 80, CERT_H - 80);
+
+    cctx.textAlign = 'center';
+
+    cctx.font = '64px sans-serif';
+    cctx.fillText('🏆', CERT_W / 2, 150);
+
+    cctx.fillStyle = '#ffcb47';
+    cctx.font = "bold 44px 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+    cctx.fillText('結業證書', CERT_W / 2, 222);
+
+    cctx.fillStyle = '#a79fc9';
+    cctx.font = "20px 'VT323', monospace";
+    cctx.fillText('特報訓練關卡 · Hazard Services SOP Training', CERT_W / 2, 256);
+
+    cctx.fillStyle = '#f1ecff';
+    cctx.font = "bold 40px 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+    cctx.fillText(name, CERT_W / 2, 340);
+    var nameHalfWidth = Math.max(cctx.measureText(name).width / 2 + 30, 120);
+    cctx.strokeStyle = '#4d446b';
+    cctx.lineWidth = 2;
+    cctx.beginPath();
+    cctx.moveTo(CERT_W / 2 - nameHalfWidth, 358);
+    cctx.lineTo(CERT_W / 2 + nameHalfWidth, 358);
+    cctx.stroke();
+
+    cctx.fillStyle = '#f1ecff';
+    cctx.font = "22px 'Microsoft JhengHei', 'Noto Sans TC', sans-serif";
+    var introLines = ['茲證明上列學員已完成 AWIPS2 Hazard Services', '特報發布與解除全部訓練課程，包括：'];
+    var y = 410;
+    introLines.forEach(function (line) { cctx.fillText(line, CERT_W / 2, y); y += 34; });
+
+    cctx.fillStyle = '#43e8d8';
+    cctx.font = "22px 'VT323', monospace";
+    var items = ['✓ 巨浪告警發布', '✓ 強風特報發布', '✓ 大雷雨即時訊息發布', '✓ 巨浪告警解除'];
+    y += 8;
+    items.forEach(function (item) { cctx.fillText(item, CERT_W / 2, y); y += 32; });
+
+    var d = new Date();
+    var dateStr = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    cctx.fillStyle = '#a79fc9';
+    cctx.font = "18px 'VT323', monospace";
+    cctx.fillText('核發日期：' + dateStr, CERT_W / 2, CERT_H - 60);
+    cctx.fillText('訓練系統自動核發', CERT_W / 2, CERT_H - 36);
+  }
+
+  function generateCertificate() {
+    renderCertificate();
+    el.certCanvas.hidden = false;
+    el.btnDownloadCert.hidden = false;
+  }
+
+  // Plain <a download> links are inert inside the Claude Artifact viewer's
+  // sandbox, so try the platform's downloads capability first and only
+  // fall back to a normal browser download when that capability isn't
+  // available in this view (e.g. running as a plain webpage on GitHub Pages).
+  function fallbackDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.download = filename;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function saveCertificateBlob(blob, filename) {
+    if (!(window.claude && typeof window.claude.use === 'function')) {
+      fallbackDownload(blob, filename);
+      return;
+    }
+    window.claude.use('downloads').then(function (downloads) {
+      if (!downloads) { fallbackDownload(blob, filename); return; }
+      return downloads.save({ filename: filename, data: blob }).catch(function (err) {
+        var code = err && err.code;
+        if (code === 'unavailable' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') {
+          fallbackDownload(blob, filename);
+        }
+        // declined / rate_limited / too_large / rejected_extension / bad_request:
+        // the platform already surfaced this to the viewer, so respect it as-is.
+      });
+    }).catch(function () {
+      fallbackDownload(blob, filename);
+    });
+  }
+
+  function downloadCertificate() {
+    var name = (el.certNameInput.value || '').trim() || '學員';
+    var filename = '結業證書_' + name + '.png';
+    el.certCanvas.toBlob(function (blob) {
+      if (!blob) return;
+      saveCertificateBlob(blob, filename);
+    }, 'image/png');
   }
 
   // ---------- map ----------
@@ -1043,6 +1271,7 @@
 
   function continueQuest() {
     var npc = quest.npc;
+    var justFinishedEverything = quest.phase === 'complete' && allQuestsCompleted();
     if (quest.phase === 'failed') {
       quest.qIndex = 0;
     }
@@ -1051,6 +1280,7 @@
     quest.current = null; quest.npc = null; quest.phase = 'idle'; quest.message = ''; quest.revealImage = null;
     if (npc) pushPlayerAwayFrom(npc);
     updateQuestPanels();
+    if (justFinishedEverything) openCertOverlay();
   }
 
   function pushPlayerAwayFrom(q) {
@@ -1069,6 +1299,10 @@
       QUEST_SETS[id].forEach(function(qq){ qq.completed = false; });
     });
     gameState = 'map';
+    closeCertOverlay();
+    el.certCanvas.hidden = true;
+    el.btnDownloadCert.hidden = true;
+    el.certNameInput.value = '';
     updateQuestPanels();
   }
 
@@ -1489,6 +1723,10 @@
       if (e.key === 'Escape') closeLightbox();
       return;
     }
+    if (!el.certOverlay.hidden) {
+      if (e.key === 'Escape') closeCertOverlay();
+      return;
+    }
     if (welcomeVisible) {
       if (e.key === 'Enter' || e.key === ' ') dismissWelcome();
       return;
@@ -1523,6 +1761,20 @@
     else continueQuest();
   });
   el.btnReset.addEventListener('click', resetGame);
+
+  el.btnViewCert.addEventListener('click', function(){
+    openCertOverlay();
+    generateCertificate();
+  });
+  el.btnGenCert.addEventListener('click', generateCertificate);
+  el.btnDownloadCert.addEventListener('click', downloadCertificate);
+  el.btnCloseCert.addEventListener('click', closeCertOverlay);
+  el.certOverlay.addEventListener('click', function(e){
+    if (e.target === el.certOverlay) closeCertOverlay();
+  });
+  el.certNameInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') generateCertificate();
+  });
 
   updateQuestPanels();
   requestAnimationFrame(loop);
